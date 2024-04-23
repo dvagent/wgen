@@ -169,4 +169,8 @@ platform. And the python scripts is also a friendly way to programm, and easy to
 from hw communication etc. 
 The rtl engine is some like a "cycle cmd processor", and can enhace it with more cmd , such as jump etc. 
 The limitation is that it more support fixed pattern, can't random like eda interface/master. But its synthesibility is most powerful.
-In certain scenarios, shorten the tests porting effort, by sharing the same drivers.
+In certain scenarios, shorten the tests porting effort, by sharing the same drivers. 
+Another limitation is that each wgen wrap support "wait" only serially, one time, one "wait". 
+But we can also control serveral wgen engine in one py script, to comine out a complex engine. Eg, one for write channel, one for read channel.
+Hope it is useful, enjoy it. :)
+
