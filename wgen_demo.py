@@ -1,3 +1,8 @@
+#
+# Function: Wave Generator command compiler, examples
+# Ver: 1.0
+# Author: Zack
+#
 import wgen as wg
 def basic_num_cfg():
     wgen = wg.Wgen("basic_num")
