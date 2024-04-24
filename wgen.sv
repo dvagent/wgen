@@ -1,13 +1,7 @@
 /*
-cmd format: ctrl subctrl (wmask wdata|delta)|(rmask rdata|delta)
-ctrl: 0:end, 1: write, 2: read, 3: write+read, 4: read+write, 7: nop, 8: repeat
-subctrl:  write: 0000: normal, 01xx: delta (+/-/<</>>)
-subctrl:  read: 0000: normal, 01xx: delta (+/-/<</>>)
-repeat: repeat-times back-steps;  note: repeat-times >=1. the real repeat times=n+1
-wmask/rmask : 1 discard, 0 remain
-----------------
-//TODO, jump, write_index, read_2_index, jump_if_rx, write_rx, read_2_rx
-
+Function: Wave Generator, cycle cmd processor.
+Ver: 1.0
+Author: Zack
 */
 `timescale 1ns/1ps
 module wgen #(parameter wrl=32,depth=1024,ring_depth=256,ram_aw = $clog2(depth) ) (
