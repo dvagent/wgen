@@ -1,3 +1,8 @@
+#
+# Function: Wave Generator command compiler
+# Ver: 1.0
+# Author: Zack
+#
 import os, shutil, math
 class Signal:
     def __init__(self, name:str,bits:int):
