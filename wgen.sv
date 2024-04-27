@@ -126,28 +126,44 @@ always @(posedge clk) begin
   if(read_ram_done && ~almost_full && ~read_ram_stop) begin
     //register counter, and set cnt=1
     if(ctrl0_is_rp) begin
+      if(d0[wrl*2 - 1 -: wrl]==0) begin
+        bpc <= bpc + 0 + d0[wrl-1 : 0];
+      end else begin //jump
            if(cnt0_is_empty && cond_cnt0) begin cnt0[wrl] <=1; cnt0[wrl-1:0]=1; cnt0[ram_aw+wrl:wrl+1]=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
       else if(cnt1_is_empty && cond_cnt0) begin cnt1[wrl] <=1; cnt1[wrl-1:0]=1; cnt1[ram_aw+wrl:wrl+1]=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
       else if(cnt2_is_empty && cond_cnt0) begin cnt2[wrl] <=1; cnt2[wrl-1:0]=1; cnt2[ram_aw+wrl:wrl+1]=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
       else if(cnt3_is_empty && cond_cnt0) begin cnt3[wrl] <=1; cnt3[wrl-1:0]=1; cnt3[ram_aw+wrl:wrl+1]=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
+      end //repeat
     end else
     if(ctrl1_is_rp) begin
+      if(d1[wrl*2 - 1 -: wrl]==0) begin
+        bpc <= bpc + 1 + d1[wrl-1 : 0];
+      end else begin //jump
            if(cnt0_is_empty && cond_cnt1) begin cnt0[wrl] <=1; cnt0[wrl-1:0]=1; cnt0[ram_aw+wrl:wrl+1]=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
       else if(cnt1_is_empty && cond_cnt1) begin cnt1[wrl] <=1; cnt1[wrl-1:0]=1; cnt1[ram_aw+wrl:wrl+1]=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
       else if(cnt2_is_empty && cond_cnt1) begin cnt2[wrl] <=1; cnt2[wrl-1:0]=1; cnt2[ram_aw+wrl:wrl+1]=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
       else if(cnt3_is_empty && cond_cnt1) begin cnt3[wrl] <=1; cnt3[wrl-1:0]=1; cnt3[ram_aw+wrl:wrl+1]=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
+      end //repeat
     end else
     if(ctrl2_is_rp) begin
+      if(d2[wrl*2 - 1 -: wrl]==0) begin
+        bpc <= bpc + 2 + d2[wrl-1 : 0];
+      end else begin //jump
            if(cnt0_is_empty && cond_cnt2) begin cnt0[wrl] <=1; cnt0[wrl-1:0]=1; cnt0[ram_aw+wrl:wrl+1]=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
       else if(cnt1_is_empty && cond_cnt2) begin cnt1[wrl] <=1; cnt1[wrl-1:0]=1; cnt1[ram_aw+wrl:wrl+1]=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
       else if(cnt2_is_empty && cond_cnt2) begin cnt2[wrl] <=1; cnt2[wrl-1:0]=1; cnt2[ram_aw+wrl:wrl+1]=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
       else if(cnt3_is_empty && cond_cnt2) begin cnt3[wrl] <=1; cnt3[wrl-1:0]=1; cnt3[ram_aw+wrl:wrl+1]=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
+      end //repeat
     end else
     if(ctrl3_is_rp) begin
+      if(d3[wrl*2 - 1 -: wrl]==0) begin
+        bpc <= bpc + 3 + d3[wrl-1 : 0];
+      end else begin //jump
            if(cnt0_is_empty && cond_cnt3) begin cnt0[wrl] <=1; cnt0[wrl-1:0]=1; cnt0[ram_aw+wrl:wrl+1]=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
       else if(cnt1_is_empty && cond_cnt3) begin cnt1[wrl] <=1; cnt1[wrl-1:0]=1; cnt1[ram_aw+wrl:wrl+1]=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
       else if(cnt2_is_empty && cond_cnt3) begin cnt2[wrl] <=1; cnt2[wrl-1:0]=1; cnt2[ram_aw+wrl:wrl+1]=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
       else if(cnt3_is_empty && cond_cnt3) begin cnt3[wrl] <=1; cnt3[wrl-1:0]=1; cnt3[ram_aw+wrl:wrl+1]=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
+      end //repeat
     end
          //counter ++
     if(ctrl0_is_rp) begin
@@ -406,7 +422,6 @@ always @(posedge clk) begin
         end else
         if(ctrl_op0==NOP) begin
           //do nothing
-          //TODO, to add counter count
           if(nop_val==0 || nop_val==1 || nop_val-nop_cnt==1) begin
             wait_st <= 0;
             nop_cnt <= 0;

@@ -1,6 +1,6 @@
 #
 # Function: Wave Generator command compiler
-# Ver: 1.0
+# Ver: 1.1
 # Author: Zack
 #
 import os, shutil, math
@@ -20,7 +20,7 @@ class Wgen:
         "wait":"0010",
         "drv_wait":"0011",
         "wait_drv":"0100",
-        "jump":"0101",
+        "jump":"1000",
         "nop":"0111",
         "repeat":"1000"
     }
@@ -256,58 +256,58 @@ class Wgen:
                 signal, n_ = self.get_sig(sig)
                 self.set_sigval(sig, data)
             if subctrl=="NORMAL":
-                op_t = f'drive({sig}, {data})'
+                op_t = f'{task_name}{patch_str}({sig}, {data})'
             else:
-                op_t = f'{task_name}({sig}, {data}, {subctrl}{patch_str})'  #FIXME
+                op_t = f'{task_name}{patch_str}({sig}, {data}, {subctrl})'  #FIXME
                 if "," in sig:
                     print("Error: non-NORMAL subctrl, dont support multi signals")
             if "," in sig:
                 op_b = ctrl_header + anded_mask + self.output_val
             else:
-                op_b = ctrl_header  + signal.maskmap + self.output_val
-            if self.pad_asm:
-                op_t += " \t//" + ctrl_header + "_" + signal.maskmap + "_" + self.output_val #pad asm
+                op_b = ctrl_header + signal.maskmap + self.output_val
         else:
             if data=='':
-                op_t = f'{task_name}(output, {self.bin2hex(self.output_val)}{patch_str})'
+                op_t = f'{task_name}{patch_str}(output, {self.bin2hex(self.output_val)}{patch_str})'
                 op_b = ctrl_header  + mask.zfill(self.max_bits) + self.output_val
             else:
                 self.set_sigval(sig, data)
-                op_t = f'{task_name}(output, {self.bin2hex(self.output_val)}, {mask}, {subctrl}{patch_str})'
+                op_t = f'{task_name}{patch_str}(output, {self.bin2hex(self.output_val)}, {mask}, {subctrl}{patch_str})'
                 op_b = ctrl_header  + mask.zfill(self.max_bits) + self.output_val
-            if self.pad_asm:
-                op_t += " \t//" + ctrl_header + "_" + mask.zfill(self.max_bits) + "_" + self.output_val #pad asm
 
+        if self.pad_asm:
+            op_t += " \t//" + self.bin2hex(op_b) #pad asm
         self.op_txt.append(op_t)
         self.op_bin.append(self.bin2hex(op_b)) #
         return len(self.op_bin) - 1
 
     def drv_wait_t(self, sig:str, data:str='', sig_wait:str="", data_wait:str="", subctrl="NORMAL", mask:str="0"):
         #to test more
-        self.drive_t(sig, data, subctrl, mask, "drv_wait")
-        n = self.wait_t(sig_wait, data_wait, 0, "drv_wait")
+        self.drive_t(sig, data, subctrl, mask, "drv_wait", ":drive")
+        n = self.wait_t(sig_wait, data_wait, 0, "drv_wait", ":wait")
         return  n
 
-    def wait_t(self, sig:str,data:str,mask:str="0", task_name:str="wait"):
-        ctrl_header = self.ctrl_dict[task_name] + self.subctrl_dict["NORMAL"]
+    def wait_t(self, sig:str,data:str,mask:str="0", task_name:str="wait", patch_str="", subctrl:str="NORMAL"):
+        ctrl_header = self.ctrl_dict[task_name] + self.subctrl_dict[subctrl]
         if sig != "input":
             signal, n_ = self.get_sig(sig, "i")
             self.set_sigval(sig, data, "i")
-            op_t = f'{task_name}({sig}, {data})'
+            op_t = f'{task_name}{patch_str}({sig}, {data})'
             op_b = ctrl_header  + signal.maskmap + self.input_val
-            if self.pad_asm:
-                op_t += " \t//" +  ctrl_header + "_" + signal.maskmap + "_"+ self.input_val # pad asm
         else:
-            op_t = f'{task_name}(input, {data}, {mask})'
-            op_b = ctrl_header  + mask + self.input_val
-            if self.pad_asm:
-                op_t += " \t//" +  ctrl_header + "_" + mask.zfill(self.max_bits) + "_"+ self.input_val # pad asm
-
+            op_t = f'{task_name}{patch_str}(input, {data}, {mask})'
+            op_b = ctrl_header + mask + self.input_val
+        if self.pad_asm:
+            op_t += " \t//" + self.bin2hex(op_b) #pad asm
         self.op_txt.append(op_t)
         self.op_bin.append(self.bin2hex(op_b))  #
         return len(self.op_bin)-1
 
-    def wait_drv_t(self, sig:str,data:str, sig_drv:str, data_drv:str='', mask:str="0", mask_drv:str="0", subctrl:str="NORMAL"):
+    def wait_drv_t(self, sig: str, data: str, sig_drv: str, data_drv: str = '', mask: str = "0", mask_drv: str = "0", subctrl: str = "NORMAL"):
+        self.wait_t(sig, data, mask, "wait_drv", ":wait")
+        self.drive_t(sig_drv, data_drv, subctrl, mask_drv, "wait_drv",":drive")
+        return len(self.op_bin) - 1
+
+    def wait_drv_t0(self, sig:str,data:str, sig_drv:str, data_drv:str='', mask:str="0", mask_drv:str="0", subctrl:str="NORMAL"):
         ctrl_header = self.ctrl_dict["wait_drv"] + self.subctrl_dict["NORMAL"]
         if sig != "input":
             signal, n_ = self.get_sig(sig, "i")
@@ -365,7 +365,6 @@ class Wgen:
 
         return len(self.op_bin)-1
 
-
     def repeat_t(self, times, start, end=0):
         #according to start and end , generate repeat op, insert to op_txt
         end = len(self.op_bin)-1 #override it
@@ -373,12 +372,18 @@ class Wgen:
         ctrl_header = self.ctrl_dict["repeat"] + self.subctrl_dict["NORMAL"]
         times-=1 #ensure times>1, if times=1, discard it
         if times>0:
-            backsteps = end-start+1;
+            backsteps = end-start+1; #repeat
             op_t = f'repeat({times}, {backsteps})'
-            self.op_txt.append(op_t) #insert after the end op
-            op_b = ctrl_header + bin(times)[2:].zfill(self.max_bits) + bin(backsteps)[2:].zfill(self.max_bits)
-            self.op_bin.append(self.bin2hex(op_b))  #
-            return len(self.op_bin)-1
+        else:
+            backsteps = start; #jump
+            op_t = f'jump({start})'
+        self.op_txt.append(op_t) #insert after the end op
+        op_b = ctrl_header + bin(times)[2:].zfill(self.max_bits) + bin(backsteps)[2:].zfill(self.max_bits)
+        self.op_bin.append(self.bin2hex(op_b))  #
+        return len(self.op_bin)-1
+
+    def jump_t(self, offset):
+        self.repeat_t(1, offset)
 
     def nop_t(self, times=1):
         #according to start and end , generate repeat op, insert to op_txt
