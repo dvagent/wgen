@@ -11,7 +11,7 @@ input wire enable,
 output reg [wrl-1:0] out_sig,
 input wire [wrl-1:0] in_sig,
 `ifdef RAM_WINF
-input wire [wrl-1:0] ram_wdata,
+input wire [ram_dw -1:0] ram_wdata,
 input wire [ram_aw-1:0] ram_waddr,
 input wire ram_wen,
 `endif
