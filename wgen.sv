@@ -1,6 +1,6 @@
 /*
 Function: Wave Generator, cycle cmd processor.
-Ver: 1.0
+Ver: 1.2
 Author: Zack
 */
 `timescale 1ns/1ps
@@ -11,7 +11,7 @@ input wire enable,
 output reg [wrl-1:0] out_sig,
 input wire [wrl-1:0] in_sig,
 `ifdef RAM_WINF
-input wire [ram_dw -1:0] ram_wdata,
+input wire [ram_dw-1:0] ram_wdata,
 input wire [ram_aw-1:0] ram_waddr,
 input wire ram_wen,
 `endif
@@ -24,6 +24,7 @@ parameter subctrl_w = 4;
 parameter ram_dw = ctrl_w + subctrl_w + wrl + wrl; //ctrl+subctrl+msk+data
 parameter END=4'b0000, WR = 4'b0001, RD = 4'b0010, WR_RD = 4'b0011, RD_WR = 4'b0100, NOP = 4'b0111, RP = 4'b1000;
 parameter NORMAL=4'b0000, ADD = 4'b0001, SUB = 4'b0010, SHFL=4'b0011, SHFR=4'b0100, LFSR=4'b0101;
+parameter EQUAL=4'b0000, LARGE = 4'b0001, SMALL = 4'b0010, LEQ = 4'b0011, SEQ = 4'b0100, NEQ = 4'b0101; //==, >, <, >=, <=, !=
 parameter STACK_ADDR_WIDTH = 4;   // 
 parameter end_code = 0; //end
 parameter thrd_bufready = ring_depth/2, thrd_empty=2, thrd_full=4;
@@ -42,7 +43,7 @@ reg [ram_aw-1+1+wrl : 0] cnt0, cnt1, cnt2, cnt3; //to record RP [npc used cnt_va
 wire cond_cnt0, cond_cnt1, cond_cnt2, cond_cnt3;
 reg wait_st, the_end, first_op_done, op0_read_done;
 wire [subctrl_w-1:0] subctrl,subctrl_next;
-wire [wrl-1:0] wmask,wdata,wmask_next,wdata_next,rmask,rdata,rmask_next,rdata_next,repeat_times,back_steps;
+wire [wrl-1:0] wmask,wdata,wmask_next,wdata_next,rmask,rdata,in_mask,rd_mask,in_mask_n,rd_mask_n,rmask_next,rdata_next,repeat_times,back_steps;
 reg [wrl-1:0] out_sig_new, out_sig_new2;
 reg almost_full, almost_empty;
 reg buf_ready;
@@ -50,6 +51,7 @@ reg bpc_updated, read_ram_done, read_ram_start, read_ram_stop;
 reg [47:0] wnum, rnum;
 reg [wrl-1:0] nop_cnt, nop_val_saved;
 wire [wrl-1:0] nop_val;
+wire wait_cond, wait_cond_n;
 
 assign cnt0_is_empty = ~cnt0[wrl];
 assign cnt1_is_empty = ~cnt1[wrl];
@@ -100,6 +102,12 @@ assign rmask_next = op1[wrl*2 - 1 -: wrl];
 assign rdata_next = op1[wrl-1 : 0 ];
 assign out_sig_new = (out_sig&wmask) | ((~wmask) & ( subctrl==NORMAL? wdata&~wmask  : subctrl==ADD? (out_sig&~wmask)+(wdata&~wmask) : subctrl==SUB? (out_sig&~wmask)-(wdata&~wmask) : subctrl==SHFL? (out_sig&~wmask) << wdata : subctrl==SHFR? (out_sig&~wmask) >> wdata : subctrl==LFSR? {out_sig[wrl-2:0],out_sig[wrl-1]^out_sig[0]} : wdata )) ;
 assign out_sig_new2 = (out_sig&wmask_next) | ((~wmask_next) & ( subctrl==NORMAL? wdata_next&~wmask_next  : subctrl==ADD? (out_sig&~wmask)+(wdata_next&~wmask) : subctrl==SUB? (out_sig&~wmask)-(wdata_next&~wmask) : subctrl==SHFL? (out_sig&~wmask_next) << wdata_next : subctrl==SHFR? (out_sig&~wmask_next) >> wdata_next : subctrl==LFSR? {out_sig[wrl-2:0],out_sig[wrl-1]^out_sig[0]} : wdata_next )) ;
+assign in_mask = in_sig&~rmask;
+assign rd_mask = rdata&~rmask;
+assign wait_cond = ~(subctrl==EQUAL? in_mask==rd_mask : subctrl==LARGE? in_mask>rd_mask : subctrl==SMALL? in_mask<rd_mask : subctrl==LEQ? in_mask>=rd_mask : subctrl==SEQ? in_mask<=rd_mask : subctrl==NEQ? in_mask!=rd_mask : in_mask==rd_mask);
+assign in_mask_n = in_sig&~rmask_next;
+assign rd_mask_n = rdata_next&~rmask_next;
+assign wait_cond_n = ~(subctrl==EQUAL? in_mask_n==rd_mask_n : subctrl==LARGE? in_mask_n>rd_mask_n : subctrl==SMALL? in_mask_n<rd_mask_n : subctrl==LEQ? in_mask_n>=rd_mask_n : subctrl==SEQ? in_mask_n<=rd_mask_n : subctrl==NEQ? in_mask_n!=rd_mask_n : in_mask_n==rd_mask_n);
 
 assign cond_cnt0 = cnt0[ram_aw+wrl:wrl+1]!=bpc+0 && cnt1[ram_aw+wrl:wrl+1]!=bpc+0 && cnt2[ram_aw+wrl:wrl+1]!=bpc+0 && cnt3[ram_aw+wrl:wrl+1]!=bpc+0;
 assign cond_cnt1 = cnt0[ram_aw+wrl:wrl+1]!=bpc+1 && cnt1[ram_aw+wrl:wrl+1]!=bpc+1 && cnt2[ram_aw+wrl:wrl+1]!=bpc+1 && cnt3[ram_aw+wrl:wrl+1]!=bpc+1;
@@ -381,7 +389,7 @@ always @(posedge clk) begin
           op1 <= ring_buf[rptr_p2];
         end else
         if(ctrl_op0==RD) begin
-          if ((in_sig&~rmask)!=(rdata&~rmask)) begin
+          if (wait_cond) begin
             wait_st <= 'b1;
           end else begin
             wait_st <= 'b0;
@@ -393,7 +401,7 @@ always @(posedge clk) begin
         end else
         if(ctrl_op0==WR_RD) begin
           out_sig <= out_sig_new;
-          if ((in_sig&~rmask_next) != (rdata_next&~rmask_next)) begin
+          if (wait_cond_n) begin
             wait_st <= 'h1;
           end else begin
             wait_st <= 'b0;
@@ -406,7 +414,7 @@ always @(posedge clk) begin
         end else
         if(ctrl_op0==RD_WR) begin
           //$display("debug, ctrl_op0=4, in_sig=%h, rdata=%h, rmask=%h, bool=%b, at time=%t", in_sig, rdata, rmask, (in_sig&~rmask)!=(rdata&~rmask), $time);
-          if ((in_sig&~rmask)!=(rdata&~rmask)) begin
+          if (wait_cond) begin
             wait_st <= 'h1;
             //$display("debug, in rd_wr, wait_st<=1, rptr=%h, at %t", rptr, $time);
           end else begin
