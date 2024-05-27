@@ -1,6 +1,6 @@
 #
 # Function: Wave Generator command compiler
-# Ver: 1.1
+# Ver: 1.2
 # Author: Zack
 #
 import os, shutil, math
@@ -32,6 +32,15 @@ class Wgen:
         "SHFR": "0100",
         "LFSR": "0101"
     }
+    subctrl_wait_dict = {
+        "EQUAL" : '0000',
+        "LARGE" : '0001',
+        "SMALL" : '0010',
+        "LEQ"   : '0011',
+        "SEQ"   : '0100',
+        "NEQ"   : '0101'
+    }
+    
     def __init__(self, name:str):
         self.name = name
         self.op_txt = []
@@ -280,14 +289,14 @@ class Wgen:
         self.op_bin.append(self.bin2hex(op_b)) #
         return len(self.op_bin) - 1
 
-    def drv_wait_t(self, sig:str, data:str='', sig_wait:str="", data_wait:str="", subctrl="NORMAL", mask:str="0"):
+    def drv_wait_t(self, sig:str, data:str='', sig_wait:str="", data_wait:str="", subctrl:str="NORMAL", mask:str="0", subctrl_wait:str="EQUAL"):
         #to test more
         self.drive_t(sig, data, subctrl, mask, "drv_wait", ":drive")
-        n = self.wait_t(sig_wait, data_wait, 0, "drv_wait", ":wait")
+        n = self.wait_t(sig_wait, data_wait, 0, "drv_wait", ":wait", subctrl_wait)
         return  n
 
-    def wait_t(self, sig:str,data:str,mask:str="0", task_name:str="wait", patch_str="", subctrl:str="NORMAL"):
-        ctrl_header = self.ctrl_dict[task_name] + self.subctrl_dict[subctrl]
+    def wait_t(self, sig:str,data:str,mask:str="0", task_name:str="wait", patch_str="", subctrl:str="EQUAL"):
+        ctrl_header = self.ctrl_dict[task_name] + self.subctrl_wait_dict[subctrl]
         if sig != "input":
             signal, n_ = self.get_sig(sig, "i")
             self.set_sigval(sig, data, "i")
@@ -302,68 +311,10 @@ class Wgen:
         self.op_bin.append(self.bin2hex(op_b))  #
         return len(self.op_bin)-1
 
-    def wait_drv_t(self, sig: str, data: str, sig_drv: str, data_drv: str = '', mask: str = "0", mask_drv: str = "0", subctrl: str = "NORMAL"):
-        self.wait_t(sig, data, mask, "wait_drv", ":wait")
+    def wait_drv_t(self, sig: str, data: str, sig_drv: str, data_drv: str = '', mask: str = "0", mask_drv: str = "0", subctrl: str = "NORMAL", subctrl_wait:str="EQUAL"):
+        self.wait_t(sig, data, mask, "wait_drv", ":wait", subctrl_wait)
         self.drive_t(sig_drv, data_drv, subctrl, mask_drv, "wait_drv",":drive")
         return len(self.op_bin) - 1
-
-    def wait_drv_t0(self, sig:str,data:str, sig_drv:str, data_drv:str='', mask:str="0", mask_drv:str="0", subctrl:str="NORMAL"):
-        ctrl_header = self.ctrl_dict["wait_drv"] + self.subctrl_dict["NORMAL"]
-        if sig != "input":
-            signal, n_ = self.get_sig(sig, "i")
-            self.set_sigval(sig, data, "i")
-            if sig_drv=="output":
-                op_t = f'wait_drv({sig}, {data}, {sig_drv}, {self.bin2hex(self.output_val)})'
-            else:
-                op_t = f'wait_drv({sig}, {data}, {sig_drv}, {data_drv})'
-            op_b = ctrl_header  + signal.maskmap + self.input_val
-            if self.pad_asm:
-                op_t += " \t//" +  ctrl_header + "_" + signal.maskmap + "_"+ self.input_val # pad asm
-        else:
-            if sig_drv=="output":
-                op_t = f'wait_drv({sig}, {data}, {sig_drv}, {self.bin2hex(self.output_val)})'
-            else:
-                op_t = f'wait_drv(input, {data}, {mask}, {sig_drv}, {data_drv})'
-            op_b = ctrl_header  + mask + self.input_val
-            if self.pad_asm:
-                op_t += " \t//" +  ctrl_header + "_" + mask.zfill(self.max_bits) + "_"+ self.input_val # pad asm
-
-        self.op_txt.append(op_t)
-        self.op_bin.append(self.bin2hex(op_b))  #
-        #--------- add drive part --------#
-        ctrl_header = self.ctrl_dict["wait_drv"] + self.subctrl_dict[subctrl]
-        if sig_drv!="output":
-
-            anded_mask = "".rjust(self.max_bits, "1")
-            if "," in sig_drv:
-                sig_list = sig_drv.split(",")
-                data_list = data_drv.split(",")
-                for i, sub_sig in enumerate(sig_list):
-                    self.set_sigval(sig_list[i].strip(), data_list[i].strip())
-                    signal, _= self.get_sig(sub_sig)
-                    anded_mask = self.bin_and(anded_mask, signal.maskmap)
-            else:
-                self.set_sigval(sig_drv, data_drv)
-                signal, n_ = self.get_sig(sig_drv)
-            if "," in sig_drv:
-                op_b = ctrl_header + anded_mask + self.output_val
-            else:
-                op_b = ctrl_header + signal.maskmap + self.output_val
-            if self.pad_asm:
-                op_t = "\t\t\t//" + ctrl_header + "_" + signal.maskmap + "_" + self.output_val #pad asm
-        else:
-            if data_drv=='':
-                op_b = ctrl_header  + mask.zfill(self.max_bits) + self.output_val
-            else:
-                self.set_sigval(sig_drv, data_drv)
-                op_b = ctrl_header  + mask.zfill(self.max_bits) + self.output_val
-            if self.pad_asm:
-                op_t = "\t\t\t//" + ctrl_header + "_" + mask.zfill(self.max_bits) + "_" + self.output_val #pad asm
-
-        self.op_txt.append(op_t)
-        self.op_bin.append(self.bin2hex(op_b)) #
-
-        return len(self.op_bin)-1
 
     def repeat_t(self, times, start, end=0):
         #according to start and end , generate repeat op, insert to op_txt
