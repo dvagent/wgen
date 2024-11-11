@@ -1,6 +1,6 @@
 /*
 Function: Wave Generator, cycle cmd processor.
-Ver: 1.2
+Ver: 1.4
 Author: Zack
 */
 `timescale 1ns/1ps
@@ -101,13 +101,13 @@ assign rdata = op0[wrl-1 : 0 ];
 assign rmask_next = op1[wrl*2 - 1 -: wrl];
 assign rdata_next = op1[wrl-1 : 0 ];
 assign out_sig_new = (out_sig&wmask) | ((~wmask) & ( subctrl==NORMAL? wdata&~wmask  : subctrl==ADD? (out_sig&~wmask)+(wdata&~wmask) : subctrl==SUB? (out_sig&~wmask)-(wdata&~wmask) : subctrl==SHFL? (out_sig&~wmask) << wdata : subctrl==SHFR? (out_sig&~wmask) >> wdata : subctrl==LFSR? {out_sig[wrl-2:0],out_sig[wrl-1]^out_sig[0]} : wdata )) ;
-assign out_sig_new2 = (out_sig&wmask_next) | ((~wmask_next) & ( subctrl==NORMAL? wdata_next&~wmask_next  : subctrl==ADD? (out_sig&~wmask)+(wdata_next&~wmask) : subctrl==SUB? (out_sig&~wmask)-(wdata_next&~wmask) : subctrl==SHFL? (out_sig&~wmask_next) << wdata_next : subctrl==SHFR? (out_sig&~wmask_next) >> wdata_next : subctrl==LFSR? {out_sig[wrl-2:0],out_sig[wrl-1]^out_sig[0]} : wdata_next )) ;
+assign out_sig_new2 = (out_sig&wmask_next) | ((~wmask_next) & ( subctrl_next==NORMAL? wdata_next&~wmask_next  : subctrl_next==ADD? (out_sig&~wmask_next)+(wdata_next&~wmask_next) : subctrl_next==SUB? (out_sig&~wmask_next)-(wdata_next&~wmask_next) : subctrl_next==SHFL? (out_sig&~wmask_next) << wdata_next : subctrl_next==SHFR? (out_sig&~wmask_next) >> wdata_next : subctrl_next==LFSR? {out_sig[wrl-2:0],out_sig[wrl-1]^out_sig[0]} : wdata_next )) ;
 assign in_mask = in_sig&~rmask;
 assign rd_mask = rdata&~rmask;
 assign wait_cond = ~(subctrl==EQUAL? in_mask==rd_mask : subctrl==LARGE? in_mask>rd_mask : subctrl==SMALL? in_mask<rd_mask : subctrl==LEQ? in_mask>=rd_mask : subctrl==SEQ? in_mask<=rd_mask : subctrl==NEQ? in_mask!=rd_mask : in_mask==rd_mask);
 assign in_mask_n = in_sig&~rmask_next;
 assign rd_mask_n = rdata_next&~rmask_next;
-assign wait_cond_n = ~(subctrl==EQUAL? in_mask_n==rd_mask_n : subctrl==LARGE? in_mask_n>rd_mask_n : subctrl==SMALL? in_mask_n<rd_mask_n : subctrl==LEQ? in_mask_n>=rd_mask_n : subctrl==SEQ? in_mask_n<=rd_mask_n : subctrl==NEQ? in_mask_n!=rd_mask_n : in_mask_n==rd_mask_n);
+assign wait_cond_n = ~(subctrl_next==EQUAL? in_mask_n==rd_mask_n : subctrl_next==LARGE? in_mask_n>rd_mask_n : subctrl_next==SMALL? in_mask_n<rd_mask_n : subctrl_next==LEQ? in_mask_n>=rd_mask_n : subctrl_next==SEQ? in_mask_n<=rd_mask_n : subctrl_next==NEQ? in_mask_n!=rd_mask_n : in_mask_n==rd_mask_n);
 
 assign cond_cnt0 = cnt0[ram_aw+wrl:wrl+1]!=bpc+0 && cnt1[ram_aw+wrl:wrl+1]!=bpc+0 && cnt2[ram_aw+wrl:wrl+1]!=bpc+0 && cnt3[ram_aw+wrl:wrl+1]!=bpc+0;
 assign cond_cnt1 = cnt0[ram_aw+wrl:wrl+1]!=bpc+1 && cnt1[ram_aw+wrl:wrl+1]!=bpc+1 && cnt2[ram_aw+wrl:wrl+1]!=bpc+1 && cnt3[ram_aw+wrl:wrl+1]!=bpc+1;
@@ -137,40 +137,40 @@ always @(posedge clk) begin
       if(d0[wrl*2 - 1 -: wrl]==0) begin
         bpc <= bpc + 0 + d0[wrl-1 : 0];
       end else begin //jump
-           if(cnt0_is_empty && cond_cnt0) begin cnt0[wrl] <=1; cnt0[wrl-1:0]=1; cnt0[ram_aw+wrl:wrl+1]=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
-      else if(cnt1_is_empty && cond_cnt0) begin cnt1[wrl] <=1; cnt1[wrl-1:0]=1; cnt1[ram_aw+wrl:wrl+1]=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
-      else if(cnt2_is_empty && cond_cnt0) begin cnt2[wrl] <=1; cnt2[wrl-1:0]=1; cnt2[ram_aw+wrl:wrl+1]=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
-      else if(cnt3_is_empty && cond_cnt0) begin cnt3[wrl] <=1; cnt3[wrl-1:0]=1; cnt3[ram_aw+wrl:wrl+1]=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
+           if(cnt0_is_empty && cond_cnt0) begin cnt0[wrl] <=1; cnt0[wrl-1:0] <=1; cnt0[ram_aw+wrl:wrl+1] <=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
+      else if(cnt1_is_empty && cond_cnt0) begin cnt1[wrl] <=1; cnt1[wrl-1:0] <=1; cnt1[ram_aw+wrl:wrl+1] <=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
+      else if(cnt2_is_empty && cond_cnt0) begin cnt2[wrl] <=1; cnt2[wrl-1:0] <=1; cnt2[ram_aw+wrl:wrl+1] <=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
+      else if(cnt3_is_empty && cond_cnt0) begin cnt3[wrl] <=1; cnt3[wrl-1:0] <=1; cnt3[ram_aw+wrl:wrl+1] <=bpc+0; bpc <= bpc + 0 - d0[wrl-1 : 0];end
       end //repeat
     end else
     if(ctrl1_is_rp) begin
       if(d1[wrl*2 - 1 -: wrl]==0) begin
         bpc <= bpc + 1 + d1[wrl-1 : 0];
       end else begin //jump
-           if(cnt0_is_empty && cond_cnt1) begin cnt0[wrl] <=1; cnt0[wrl-1:0]=1; cnt0[ram_aw+wrl:wrl+1]=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
-      else if(cnt1_is_empty && cond_cnt1) begin cnt1[wrl] <=1; cnt1[wrl-1:0]=1; cnt1[ram_aw+wrl:wrl+1]=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
-      else if(cnt2_is_empty && cond_cnt1) begin cnt2[wrl] <=1; cnt2[wrl-1:0]=1; cnt2[ram_aw+wrl:wrl+1]=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
-      else if(cnt3_is_empty && cond_cnt1) begin cnt3[wrl] <=1; cnt3[wrl-1:0]=1; cnt3[ram_aw+wrl:wrl+1]=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
+           if(cnt0_is_empty && cond_cnt1) begin cnt0[wrl] <=1; cnt0[wrl-1:0] <=1; cnt0[ram_aw+wrl:wrl+1] <=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
+      else if(cnt1_is_empty && cond_cnt1) begin cnt1[wrl] <=1; cnt1[wrl-1:0] <=1; cnt1[ram_aw+wrl:wrl+1] <=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
+      else if(cnt2_is_empty && cond_cnt1) begin cnt2[wrl] <=1; cnt2[wrl-1:0] <=1; cnt2[ram_aw+wrl:wrl+1] <=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
+      else if(cnt3_is_empty && cond_cnt1) begin cnt3[wrl] <=1; cnt3[wrl-1:0] <=1; cnt3[ram_aw+wrl:wrl+1] <=bpc+1; bpc <= bpc + 1 - d1[wrl-1 : 0];end
       end //repeat
     end else
     if(ctrl2_is_rp) begin
       if(d2[wrl*2 - 1 -: wrl]==0) begin
         bpc <= bpc + 2 + d2[wrl-1 : 0];
       end else begin //jump
-           if(cnt0_is_empty && cond_cnt2) begin cnt0[wrl] <=1; cnt0[wrl-1:0]=1; cnt0[ram_aw+wrl:wrl+1]=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
-      else if(cnt1_is_empty && cond_cnt2) begin cnt1[wrl] <=1; cnt1[wrl-1:0]=1; cnt1[ram_aw+wrl:wrl+1]=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
-      else if(cnt2_is_empty && cond_cnt2) begin cnt2[wrl] <=1; cnt2[wrl-1:0]=1; cnt2[ram_aw+wrl:wrl+1]=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
-      else if(cnt3_is_empty && cond_cnt2) begin cnt3[wrl] <=1; cnt3[wrl-1:0]=1; cnt3[ram_aw+wrl:wrl+1]=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
+           if(cnt0_is_empty && cond_cnt2) begin cnt0[wrl] <=1; cnt0[wrl-1:0] <=1; cnt0[ram_aw+wrl:wrl+1] <=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
+      else if(cnt1_is_empty && cond_cnt2) begin cnt1[wrl] <=1; cnt1[wrl-1:0] <=1; cnt1[ram_aw+wrl:wrl+1] <=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
+      else if(cnt2_is_empty && cond_cnt2) begin cnt2[wrl] <=1; cnt2[wrl-1:0] <=1; cnt2[ram_aw+wrl:wrl+1] <=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
+      else if(cnt3_is_empty && cond_cnt2) begin cnt3[wrl] <=1; cnt3[wrl-1:0] <=1; cnt3[ram_aw+wrl:wrl+1] <=bpc+2; bpc <= bpc + 2 - d2[wrl-1 : 0];end
       end //repeat
     end else
     if(ctrl3_is_rp) begin
       if(d3[wrl*2 - 1 -: wrl]==0) begin
         bpc <= bpc + 3 + d3[wrl-1 : 0];
       end else begin //jump
-           if(cnt0_is_empty && cond_cnt3) begin cnt0[wrl] <=1; cnt0[wrl-1:0]=1; cnt0[ram_aw+wrl:wrl+1]=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
-      else if(cnt1_is_empty && cond_cnt3) begin cnt1[wrl] <=1; cnt1[wrl-1:0]=1; cnt1[ram_aw+wrl:wrl+1]=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
-      else if(cnt2_is_empty && cond_cnt3) begin cnt2[wrl] <=1; cnt2[wrl-1:0]=1; cnt2[ram_aw+wrl:wrl+1]=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
-      else if(cnt3_is_empty && cond_cnt3) begin cnt3[wrl] <=1; cnt3[wrl-1:0]=1; cnt3[ram_aw+wrl:wrl+1]=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
+           if(cnt0_is_empty && cond_cnt3) begin cnt0[wrl] <=1; cnt0[wrl-1:0] <=1; cnt0[ram_aw+wrl:wrl+1] <=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
+      else if(cnt1_is_empty && cond_cnt3) begin cnt1[wrl] <=1; cnt1[wrl-1:0] <=1; cnt1[ram_aw+wrl:wrl+1] <=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
+      else if(cnt2_is_empty && cond_cnt3) begin cnt2[wrl] <=1; cnt2[wrl-1:0] <=1; cnt2[ram_aw+wrl:wrl+1] <=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
+      else if(cnt3_is_empty && cond_cnt3) begin cnt3[wrl] <=1; cnt3[wrl-1:0] <=1; cnt3[ram_aw+wrl:wrl+1] <=bpc+3; bpc <= bpc + 3 - d3[wrl-1 : 0];end
       end //repeat
     end
          //counter ++
